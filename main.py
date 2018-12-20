@@ -147,7 +147,7 @@ def direct_sum(modules, attrs):
         return submodule, attractors
 
 
-def attractors(net, size=None, encode=False):
+def attractors(net, size=None, encode=True):
     if not is_network(net):
         raise TypeError("net must be a network or a networkx DiGraph")
     elif is_fixed_sized(net) and size is not None:
