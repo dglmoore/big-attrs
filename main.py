@@ -96,6 +96,51 @@ def transitions(net, size=None, subgraph=None, parent=None):
     return backward, trans
 
 
+def attrs(trans):
+    cycles = []
+    visited = np.zeros(len(trans), dtype=np.bool)
+    basins = np.zeros(len(trans), dtype=np.int)
+    basin_number = 1
+
+    initial_state = 0
+    while initial_state < len(trans):
+        state_stack = []
+        cycle = []
+        in_cycle = False
+        state = initial_state
+        terminus = next_state = trans[state]
+        visited[state] = True
+        while not visited[next_state]:
+            state_stack.append(state)
+            state = next_state
+            terminus = next_state = trans[state]
+            visited[state] = True
+
+        if basins[next_state] == 0:
+            basin = basin_number
+            cycle.append(state)
+            in_cycle = (terminus != state)
+        else:
+            basin = basins[next_state]
+
+        basins[state] = basin
+
+        while len(state_stack) != 0:
+            state = state_stack.pop()
+            basins[state] = basin
+            if in_cycle:
+                cycle.append(state)
+                in_cycle = (terminus != state)
+
+        while initial_state < len(visited) and visited[initial_state]:
+            initial_state += 1
+
+        if len(cycle) != 0:
+            cycles.append(cycle)
+
+    return cycles
+
+
 def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=False):
     if not is_network(net):
         raise TypeError("net must be a network or a networkx DiGraph")
@@ -109,24 +154,33 @@ def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=Fa
     else:
         decoder = net.state_space(size).decode
 
-    graph = nx.DiGraph()
     mapping, trans = transitions(net, size=size, subgraph=subgraph, parent=parent)
-    graph.add_edges_from(trans)
+    collapsed = [None] * len(trans)
+    for s, t in trans:
+        try:
+            collapsed[s] = t
+        except IndexError:
+            print(trans)
+            print(mapping)
+            raise
+    assert(all(map(lambda x: x is not None, collapsed)))
+
+    cycles = attrs(collapsed)
 
     if mapping is None:
         if encode:
-            attractors = list(nx.simple_cycles(graph))
+            attractors = cycles
         else:
             attractors = []
-            for attr in nx.simple_cycles(graph):
+            for attr in cycles:
                 attractors.append(list(map(decoder, attr)))
     elif encode:
         attractors = []
-        for attr in nx.simple_cycles(graph):
+        for attr in cycles:
             attractors.append(list(map(lambda state: mapping[state], attr)))
     else:
         attractors = []
-        for attr in nx.simple_cycles(graph):
+        for attr in cycles:
             attractors.append(list(map(lambda state: decoder(mapping[state]), attr)))
 
     return attractors
