@@ -247,7 +247,7 @@ def direct_sum(modules, attrs):
         return submodule, attractors
 
 
-def attractors(net, size=None, encode=True, max_module_size=15):
+def attractors(net, size=None, encode=True):
     if not is_network(net):
         raise TypeError("net must be a network or a networkx DiGraph")
     elif is_fixed_sized(net) and size is not None:
@@ -263,10 +263,6 @@ def attractors(net, size=None, encode=True, max_module_size=15):
         encoder = net.state_space(size)._unsafe_encode;
 
     modules = list(nx.strongly_connected_components(g))
-
-    N = max(map(len, modules))
-    if N> max_module_size:
-        raise RuntimeError("largest module is too large ({} > {})".format(N, max_module_size))
 
     dag = nx.condensation(g)
     dag_list = list(nx.topological_sort(dag))
