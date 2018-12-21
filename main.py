@@ -118,16 +118,18 @@ def greatest_predecessors(dag, n):
 
 
 def direct_sum(modules, attrs):
-    def merge(nodes, attractor, component):
+    def merge(nodes, attractor, component, matched_nodes=None):
         result = []
         for y in component:
             subresult = []
             for x in attractor:
-                state = y[:]
-                for i in nodes:
-                    state[i] = x[i]
-                subresult.append(state)
-            result.append(subresult)
+                if matched_nodes is None or all([x[n] == y[n] for n in matched_nodes]):
+                    state = y[:]
+                    for i in nodes:
+                        state[i] = x[i]
+                    subresult.append(state)
+            if len(subresult) != 0:
+                result.append(subresult)
         return result
 
     if len(modules) == 0:
@@ -138,10 +140,11 @@ def direct_sum(modules, attrs):
         attractors = []
 
         submodule, components = direct_sum(modules[1:], attrs[1:])
+        matched_nodes = modules[0] & submodule
         for attractor in attrs[0]:
             subresult = []
             for component in components:
-                subresult += merge(modules[0], attractor, component)
+                subresult += merge(modules[0], attractor, component, matched_nodes)
             attractors += subresult
         submodule = modules[0] | submodule
         return submodule, attractors
