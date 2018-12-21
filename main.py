@@ -57,6 +57,7 @@ def transitions(net, size=None, subgraph=None, parent=None):
     encoder = state_space._unsafe_encode;
 
     if subgraph is None:
+        backward = None
         trans = [None] * state_space.volume;
         for i, state in enumerate(state_space):
             net._unsafe_update(state)
@@ -72,13 +73,27 @@ def transitions(net, size=None, subgraph=None, parent=None):
             trans = [None] * (sum(map(len, parent_attractors)) * 2**len(subgraph))
             space = subspace(subgraph, size, dynamic_values=parent)
 
+        forward = {}
+        backward = {}
+        k = 0
         for i, state in enumerate(space):
             source = encoder(state)
             net._unsafe_update(state, pin=pin)
             target = encoder(state)
-            trans[i] = (source, target)
 
-    return trans
+            if source not in forward:
+                forward[source] = k
+                backward[k] = source
+                k += 1
+
+            if target not in forward:
+                forward[target] = k
+                backward[k] = target
+                k += 1
+
+            trans[i] = (forward[source], forward[target])
+
+    return backward, trans
 
 
 def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=False):
@@ -95,12 +110,26 @@ def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=Fa
         decoder = net.state_space(size).decode
 
     graph = nx.DiGraph()
-    graph.add_edges_from(transitions(net, size=size, subgraph=subgraph, parent=parent))
+    mapping, trans = transitions(net, size=size, subgraph=subgraph, parent=parent)
+    graph.add_edges_from(trans)
 
-    if encode:
-        return list(nx.simple_cycles(graph))
+    if mapping is None:
+        if encode:
+            attractors = list(nx.simple_cycles(graph))
+        else:
+            attractors = []
+            for attr in nx.simple_cycles(graph):
+                attractors.append(list(map(decoder, attr)))
+    elif encode:
+        attractors = []
+        for attr in nx.simple_cycles(graph):
+            attractors.append(list(map(lambda state: mapping[state], attr)))
     else:
-        return list(map(lambda attr: list(map(decoder, attr)), nx.simple_cycles(graph)))
+        attractors = []
+        for attr in nx.simple_cycles(graph):
+            attractors.append(list(map(lambda state: decoder(mapping[state]), attr)))
+
+    return attractors
 
 
 def greatest_predecessors(dag, n):
