@@ -82,7 +82,7 @@ def transitions(net, size=None, subgraph=None, parent=None):
     return trans
 
 
-def attractors_brute_force(net, size=None, subgraph=None, parent=None):
+def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=False):
     if not is_network(net):
         raise TypeError("net must be a network or a networkx DiGraph")
     elif is_fixed_sized(net) and size is not None:
@@ -98,7 +98,10 @@ def attractors_brute_force(net, size=None, subgraph=None, parent=None):
     graph = nx.DiGraph()
     graph.add_edges_from(transitions(net, size=size, subgraph=subgraph, parent=parent))
 
-    return list(map(lambda attr: list(map(decoder, attr)), nx.simple_cycles(graph)))
+    if encode:
+        return list(nx.simple_cycles(graph))
+    else:
+        return list(map(lambda attr: list(map(decoder, attr)), nx.simple_cycles(graph)))
 
 
 def greatest_predecessors(dag, n):
