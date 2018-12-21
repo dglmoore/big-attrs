@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 
 from functools import reduce
+from itertools import cycle, islice
 from neet.interfaces import is_network, is_fixed_sized
 
 def subspace(subgraph, size=None, dynamic_values=None):
@@ -160,9 +161,8 @@ def attractors_brute_force(net, size=None, subgraph=None, parent=None, encode=Fa
         try:
             collapsed[s] = t
         except IndexError:
-            print(trans)
-            print(mapping)
             raise
+
     assert(all(map(lambda x: x is not None, collapsed)))
 
     cycles = attrs(collapsed)
@@ -202,21 +202,33 @@ def greatest_predecessors(dag, n):
     return greatest
 
 
-def direct_sum(modules, attrs):
-    def merge(nodes, attractor, component, matched_nodes=None):
-        result = []
-        for y in component:
-            subresult = []
-            for x in attractor:
-                if matched_nodes is None or all([x[n] == y[n] for n in matched_nodes]):
-                    state = y[:]
-                    for i in nodes:
-                        state[i] = x[i]
-                    subresult.append(state)
-            if len(subresult) != 0:
-                result.append(subresult)
-        return result
+def merge(nodes, attractor, component, matched_nodes=None):
+    l = np.lcm(len(attractor), len(component))
+    attractor = list(islice(cycle(attractor), l))
+    if matched_nodes is not None:
+        match_points = []
+        root = attractor[0]
+        for i, y in enumerate(component):
+            compared = [root[n] == y[n] for n in matched_nodes]
+            if all(compared):
+                match_points.append(i)
+    else:
+        match_points = range(len(component))
 
+    result = []
+    for i in match_points:
+        subresult = []
+        for x, y in zip(attractor, islice(cycle(component), i, i + l)):
+            state = y[:]
+            for k in nodes:
+                state[k] = x[k]
+            subresult.append(state)
+        if len(subresult) != 0:
+            result.append(subresult)
+    return result
+
+
+def direct_sum(modules, attrs):
     if len(modules) == 0:
         return modules, attrs
     elif len(modules) == 1:
@@ -296,6 +308,7 @@ def main():
     from neet.boolean.examples import s_pombe
 
     print(attractors(s_pombe, encode=True))
+
 
 if __name__ == '__main__':
     main()
