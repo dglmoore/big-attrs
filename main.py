@@ -61,19 +61,18 @@ def transitions(net, size=None, subgraph=None, parent=None):
         for i, state in enumerate(state_space):
             net._unsafe_update(state)
             trans[i] = (i, encoder(state))
-    elif parent is None:
-        pin = [ n for n in range(state_space.ndim) if n not in subgraph ]
-        trans = [None] * 2**len(subgraph)
-        for i, state in enumerate(subspace(subgraph, size)):
-            source = encoder(state)
-            net._unsafe_update(state, pin=pin)
-            target = encoder(state)
-            trans[i] = (source, target)
     else:
-        parent_nodes, parent_attractors = parent
-        pin = [ n for n in range(state_space.ndim) if n not in (subgraph | parent_nodes) ]
-        trans = [None] * (sum(map(len, parent_attractors)) * 2**len(subgraph))
-        for i, state in enumerate(subspace(subgraph, size, dynamic_values=parent)):
+        if parent is None:
+            pin = [ n for n in range(state_space.ndim) if n not in subgraph ]
+            trans = [None] * 2**len(subgraph)
+            space = subspace(subgraph, size)
+        else:
+            parent_nodes, parent_attractors = parent
+            pin = [ n for n in range(state_space.ndim) if n not in (subgraph | parent_nodes) ]
+            trans = [None] * (sum(map(len, parent_attractors)) * 2**len(subgraph))
+            space = subspace(subgraph, size, dynamic_values=parent)
+
+        for i, state in enumerate(space):
             source = encoder(state)
             net._unsafe_update(state, pin=pin)
             target = encoder(state)
